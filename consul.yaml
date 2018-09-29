@@ -1,0 +1,53 @@
+version: '3'
+
+networks:
+    testing_default:
+    
+services:
+    consul:
+        image: consul:1.2.3
+        networks: 
+            - testing_default
+        command: consul agent -dev -ui -client 0.0.0.0
+        environment:
+            - SERVICE_IGNORE=always
+        ports:
+            - 8300:8300
+            - 8500:8500
+            - 8600:8600
+            
+    registrator:
+        image: gliderlabs/registrator:latest
+        networks: 
+            - testing_default
+        command: "-internal consul://consul:8500"      
+        volumes:
+            - /var/run/docker.sock:/tmp/docker.sock
+        deploy:
+            replicas: 3
+            
+    go-hello:
+        image: aria31/go-hello
+        networks: 
+            - testing_default
+        environment:
+            - APP_NAME=go-hello
+            - CONSUL_HOST=consul
+            - CONSUL_PORT=8500
+        ports:
+            - :3000
+            
+    api-gateway:
+        image: aria31/api-gateway
+        networks: 
+            - testing_default
+        environment:
+            # - _JAVA_OPTIONS=-Xmx512m -Xms256m
+            - SPRING_PROFILES_ACTIVE=dev,swagger
+            - SPRING_CLOUD_CONSUL_HOST=consul
+            - SPRING_CLOUD_CONSUL_PORT=8500
+            # - SPRING_DATASOURCE_URL=jdbc:mariadb://apigateway-mariadb:3306/apigateway
+            - JHIPSTER_SLEEP=1 # gives time for the database to boot before the application
+        ports:
+            - 8085:8080
+            
